@@ -136,15 +136,37 @@ with tab4:
         st.success(st.session_state["reset_success_msg"])
         del st.session_state["reset_success_msg"]
 
+    # 初始化防呆確認狀態
+    if "confirm_reset" not in st.session_state:
+        st.session_state["confirm_reset"] = False
+
     reset_pwd = st.text_input(
         "輸入管理密碼以清空資料", type="password", key="reset_pwd"
     )
-    if st.button("🧹 清空所有資料", type="primary"):
+
+    # 第一階段：驗證密碼
+    if st.button("🧹 申請清空所有資料", type="secondary"):
         if reset_pwd != DRAW_PASSWORD:
             st.error("❌ 密碼錯誤，無法重設。")
+            st.session_state["confirm_reset"] = False
+        elif len(shared_submissions) == 0:
+            st.info("目前資料庫已經是空的，無需清空。")
+            st.session_state["confirm_reset"] = False
         else:
-            shared_submissions.clear()
-            sync_to_cloud()
-            # 暫存提示訊息，重整後顯示綠色 Bar
-            st.session_state["reset_success_msg"] = "✅ 所有填寫紀錄已清空"
-            st.rerun()
+            st.session_state["confirm_reset"] = True
+
+    # 第二階段：防呆警告與最終執行按鈕
+    if st.session_state["confirm_reset"]:
+        st.warning("⚠️ **警告：此操作將永久抹除所有同仁填寫的紀錄，無法復原！**")
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            if st.button("🚨 你確定嗎？刪錯了你就是千古罪人！", type="primary"):
+                shared_submissions.clear()
+                sync_to_cloud()
+                st.session_state["reset_success_msg"] = "✅ 所有填寫紀錄已清空"
+                st.session_state["confirm_reset"] = False  # 重設狀態
+                st.rerun()
+        with col2:
+            if st.button("點此反悔取消"):
+                st.session_state["confirm_reset"] = False
+                st.rerun()
