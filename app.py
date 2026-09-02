@@ -53,7 +53,7 @@ def sync_to_cloud():
         print(f"[WARN] 儲存失敗: {e}")
 
 
-st.title("🎯 抽籤系統")
+st.title("🎯 猜猜誰是幸運兒")
 
 tab1, tab2, tab3, tab4 = st.tabs(
     ["📝 員工填寫", "🎯 Leader 抽籤", "🗑️ 刪除單筆紀錄", "🧹 資料 Reset"]
@@ -62,13 +62,13 @@ tab1, tab2, tab3, tab4 = st.tabs(
 # --- Tab 1: 員工填寫 ---
 with tab1:
     with st.form("submit_form", clear_on_submit=True):
-        pos_input = st.text_input("上班位置代碼（如 M1、L、C2）")
+        pos_input = st.text_input("上班位置（如 M1、L、C2）")
         submit_btn = st.form_submit_button("送出")
 
         if submit_btn:
             cleaned_pos = pos_input.strip()
             if not cleaned_pos:
-                st.warning("⚠️ 請輸入上班位置代碼，內容不可為空！")
+                st.warning("⚠️ 你搞個空白誰知道你是誰！")
             elif cleaned_pos in [d["崗位"] for d in shared_submissions]:
                 st.error(f"🚫 {cleaned_pos} 不要重複報名，給我認真上班")
             else:
@@ -96,7 +96,7 @@ with tab2:
             st.error(f"❌ 目前只有 {total_records} 筆資料，無法抽出 {count} 人")
         else:
             winners = random.sample(shared_submissions, int(count))
-            st.success("🎉 抽籤完成！")
+            st.success("🎉 放假摟！")
             st.table(pd.DataFrame(winners))
 
 # --- Tab 3: 刪除單筆紀錄 ---
@@ -145,7 +145,7 @@ with tab4:
     )
 
     # 第一階段：驗證密碼
-    if st.button("🧹 申請清空所有資料", type="secondary"):
+    if st.button("🧹 清空所有資料", type="secondary"):
         if reset_pwd != DRAW_PASSWORD:
             st.error("❌ 密碼錯誤，無法重設。")
             st.session_state["confirm_reset"] = False
@@ -157,7 +157,7 @@ with tab4:
 
     # 第二階段：防呆警告與最終執行按鈕
     if st.session_state["confirm_reset"]:
-        st.warning("⚠️ **警告：此操作將永久抹除所有同仁填寫的紀錄，無法復原！**")
+        st.warning("⚠️ **警告：此操作將抹除所有同仁填寫的紀錄，無法復原！**")
         col1, col2 = st.columns([2, 1])
         with col1:
             if st.button("🚨 你確定嗎？刪錯了你就是千古罪人！", type="primary"):
