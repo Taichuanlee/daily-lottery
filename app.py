@@ -6,7 +6,7 @@ from huggingface_hub import HfApi, hf_hub_download
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="我.要.放.假!", page_icon="🎯")
+st.set_page_config(page_title="我.要.放.假！", page_icon="🎯")
 tz_taiwan = timezone(timedelta(hours=8))
 DRAW_PASSWORD = "52388"
 
