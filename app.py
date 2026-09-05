@@ -143,7 +143,7 @@ def get_position_roast(pos: str) -> str:
         pool.extend(COMMON_GROUPS["A"])
     elif p in ["M8", "M9", "M10", "M11", "M12"]:
         pool.extend(COMMON_GROUPS["M_BACK"])
-    elif p in ["T1", "T2"]:
+    elif p in ["T1", "T2", "T"]:
         pool.extend(COMMON_GROUPS["T"])
     elif p in ["O1", "O3"]:
         pool.extend(COMMON_GROUPS["O"])
