@@ -5,6 +5,7 @@ import random
 from huggingface_hub import HfApi, hf_hub_download
 import pandas as pd
 import streamlit as st
+import time
 
 st.set_page_config(page_title="我.要.放.假！", page_icon="🎯")
 tz_taiwan = timezone(timedelta(hours=8))
@@ -90,13 +91,41 @@ with tab1:
 # --- Tab 2: Leader 抽籤 ---
 with tab2:
     count = st.selectbox("抽出人數", options=[1, 2, 3, 4, 5])
-    if st.button("開始抽籤", type="primary"):
+
+    # 抽籤儀式感候選句子（每次隨機選一句）
+    suspense_texts = [
+        "⏳ 正在計算功德值中...",
+        "⏳ 正在祈求EOC電話乖乖...",
+        "⏳ 病人不要來，我想回家...",
+        "⏳ 正在計算今天誰不適合上班的磁場最容易觸霉頭，優先放生...",
+        "⏳ 正在搖晃命運籤筒，骰子滾動中...",
+        "⏳ 命運之輪瘋狂旋轉中，誰能活著走出單位...",
+        "⏳ 系統黑箱作業中...",
+    ]
+
+    # 祝賀幹話候選庫
+    win_greetings = [
+        "🎉 恭喜脫離苦海！快走，趁 Leader 還沒反悔！",
+        "🎉 今日陽壽已扣除，成功兌換提早下班一張！",
+        "🎉 慢走不送！剩下的病人跟記錄我們會含淚替你守護的。",
+        "🎉 跑快一點，千萬不要回頭看！記得上差勤請假！",
+        "🎉 恭喜祖上積德！今日幸運值已達顛峰，下班請小心不要踩到狗屎！",
+    ]
+
+    if st.button("🎲 啟動命運之輪（開始抽籤）", type="primary"):
         total_records = len(shared_submissions)
         if count > total_records:
             st.error(f"❌ 目前只有 {total_records} 筆資料，無法抽出 {count} 人")
         else:
+            # 隨機挑選一句儀式感文字，停頓 1.5 秒營造心跳感
+            random_suspense = random.choice(suspense_texts)
+            with st.spinner(random_suspense):
+                time.sleep(1.5)
+
             winners = random.sample(shared_submissions, int(count))
-            st.success("🎉 放假摟！")
+
+            # 隨機祝賀詞
+            st.success(random.choice(win_greetings))
             st.table(pd.DataFrame(winners))
 
 # --- Tab 3: 刪除單筆紀錄 ---
