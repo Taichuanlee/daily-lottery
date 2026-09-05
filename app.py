@@ -49,8 +49,110 @@ win_greetings = [
     "🎉 趁現在沒下雨，快跑！",
 ]
 
+# ==========================================
+# 🎯 崗位專屬幹話資料庫（隨時可自由增刪）
+# ==========================================
 
-# === 關鍵優化：全伺服器共用資料池，避免每個人進來都狂打 API ===
+# 1. 共通幹話群組（同區同仁共用）
+COMMON_GROUPS = {
+    # 重症區 (C1 ~ C5)
+    "C": [
+        "重症需要你。",
+        "重症的別跑啊。",
+        "重症的夥伴在看你。",
+    ],
+    # 大暫區 (A1 ~ A8)
+    "A": [
+        "大暫就好好交班吧。",
+        "大暫的夥伴在瞪你。",
+        "你走了其他的大暫夥伴會很孤單。",
+        "大暫缺你不可。",
+    ],
+    # 後線 (M8 ~ M12)
+    "M_BACK": [
+        "都上後線就別走了吧...",
+    ],
+    # 門神/外傷區 (T1 ~ T2)
+    "T": [
+        "門神別走。",
+        "守門的，鎮住阿。",
+    ],
+    # 點班區 (O1, O3)
+    "O": [
+        "點完班再走吧...",
+        "來診的病人們等著你...",
+    ],
+}
+
+# 2. 個別崗位專屬句（有獨立梗的寫這裡，會自動跟共通句合併）
+INDIVIDUAL_POSITION_EGGS = {
+    # Leader
+    "L": [
+        "Leader 還想跑啊？",
+        "你走了誰卡你勒？",
+        "下個替死鬼是誰勒？",
+        "看一下你隔壁的，等下就是他上 Leader 了。",
+    ],
+    # 內科單獨崗位
+    "M1": [
+        "M1 也想走阿？哪個衰鬼會頂你勒？",
+        "M1 今天很空ㄟ，確定要走嗎？",
+        "M1 很滿喔，希望你可以抽中。",
+    ],
+    "M2": [
+        "你走了 M23 很孤單ㄟ。",
+    ],
+    "M4": [
+        "U 區感覺很多隔離ㄟ，快跑。",
+        "U 區老人等著你 ><",
+        "你沒抽中的話，今天就要一個人待在裡面了。",
+    ],
+    "M11": [
+        "你們今天人力很奢侈喔...",
+    ],
+    "M12": [
+        "你們今天人力很奢侈喔...",
+    ],
+    # 重症個別特別句
+    "C1": [
+        "重一就留下來好好交班，好嗎？",
+    ],
+    "C2": [
+        "重二請好好外送。",
+    ],
+    # 兒科/特殊區
+    "P": [
+        "小人國，笑你。",
+    ],
+}
+
+
+def get_position_roast(pos: str) -> str:
+    """自動判定崗位並隨機抽取一句幹話"""
+    p = pos.upper().strip()
+    pool = []
+
+    # 1. 抓取個別專屬句
+    if p in INDIVIDUAL_POSITION_EGGS:
+        pool.extend(INDIVIDUAL_POSITION_EGGS[p])
+
+    # 2. 抓取所屬群組共通句
+    if p in ["C1", "C2", "C3", "C4", "C5"]:
+        pool.extend(COMMON_GROUPS["C"])
+    elif p in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]:
+        pool.extend(COMMON_GROUPS["A"])
+    elif p in ["M8", "M9", "M10", "M11", "M12"]:
+        pool.extend(COMMON_GROUPS["M_BACK"])
+    elif p in ["T1", "T2"]:
+        pool.extend(COMMON_GROUPS["T"])
+    elif p in ["O1", "O3"]:
+        pool.extend(COMMON_GROUPS["O"])
+
+    # 3. 如果有符合的句子，隨機挑一句回傳；沒有就回傳 None
+    return random.choice(pool) if pool else None
+
+
+# === 全伺服器共用資料池 ===
 @st.cache_resource
 def get_global_data():
     try:
@@ -66,12 +168,11 @@ def get_global_data():
         return []
 
 
-# 取得目前共用的資料名單
 shared_submissions = get_global_data()
 
 
 def sync_to_cloud():
-    """非同步/背景儲存到 HF Dataset，不卡住使用者連線"""
+    """背景儲存到 HF Dataset"""
     try:
         with open(DATA_FILENAME, "w", encoding="utf-8") as f:
             json.dump(shared_submissions, f, ensure_ascii=False, indent=2)
@@ -103,13 +204,20 @@ with tab1:
             cleaned_pos = pos_input.strip()
             if not cleaned_pos:
                 st.warning("⚠️ 你搞個空白誰知道你是誰！")
-            elif cleaned_pos in [d["崗位"] for d in shared_submissions]:
+            elif cleaned_pos.upper() in [d["崗位"].upper() for d in shared_submissions]:
                 st.error(f"🚫 {cleaned_pos} 不要重複報名，給我認真上班")
             else:
                 now_time = datetime.now(tz=tz_taiwan).strftime("%Y-%m-%d %H:%M:%S")
                 shared_submissions.append({"崗位": cleaned_pos, "時間": now_time})
                 sync_to_cloud()
                 st.success(f"✅ 已填寫：{cleaned_pos}（時間：{now_time}）")
+
+                # 💬 觸發崗位專屬幹話
+                roast_msg = get_position_roast(cleaned_pos)
+                if roast_msg:
+                    st.info(f"👉 {cleaned_pos}：{roast_msg}")
+
+                # 滿 10 人以上觸發大群體吐槽
                 if len(shared_submissions) >= 10:
                     st.warning(f"📢 目前已達 {len(shared_submissions)} 人報名！\n\n{random.choice(crowd_roasts)}")
 
@@ -132,14 +240,12 @@ with tab2:
         if count > total_records:
             st.error(f"❌ 目前只有 {total_records} 筆資料，無法抽出 {count} 人")
         else:
-            # 隨機挑選一句儀式感文字，停頓 2 秒營造心跳感
             random_suspense = random.choice(suspense_texts)
             with st.spinner(random_suspense):
                 time.sleep(2)
 
             winners = random.sample(shared_submissions, int(count))
 
-            # 隨機祝賀詞
             st.success(random.choice(win_greetings))
             st.table(pd.DataFrame(winners))
 
