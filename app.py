@@ -54,25 +54,48 @@ win_greetings = sheet_data.get("WIN", [
 ])
 
 
+def has_chinese(text: str) -> bool:
+    """檢查字串內是否含有中文字"""
+    return any('\u4e00' <= char <= '\u9fff' for char in text)
+
+
 def get_position_roast(pos: str) -> str:
-    """自動判定崗位並從 Sheet 隨機抽取一句幹話"""
+    """
+    自動判定崗位/關鍵字並從 Sheet 隨機抽取一句幹話
+    - 中文關鍵字（如：柏緯、阿長）：只要輸入內容包含該關鍵字即觸發
+    - 英數代碼（如：L、M1、C2）：必須完全一致才觸發（防誤殺）
+    """
     p = pos.upper().strip()
     pool = []
 
-    # 1. 抓取個別專屬句 (例如 L, M1, C1 等)
-    if p in sheet_data:
-        pool.extend(sheet_data[p])
+    # 1. 比對 Sheet 資料（個別崗位或特定中文關鍵字）
+    for kw, texts in sheet_data.items():
+        if kw in ["CROWD", "SUSPENSE", "WIN"]:
+            continue  # 排除系統保留關鍵字
 
-    # 2. 抓取所屬群組共通句
+        if has_chinese(kw):
+            # 中文關鍵字：包含即成立（例：打「李柏緯」會中「柏緯」）
+            if kw in p:
+                pool.extend(texts)
+        else:
+            # 純代碼：必須 100% 完全相符（例：「M1」不誤中「M10」；「L」不誤中任何單字）
+            if kw == p:
+                pool.extend(texts)
+
+    # 2. 抓取所屬群組共通句（同區共享梗）
     if p in ["C1", "C2", "C3", "C4", "C5"] and "C" in sheet_data:
         pool.extend(sheet_data["C"])
-    elif p in [f"A{i}" for i in range(1, 9)] and "A" in sheet_data:
+
+    if p in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "AL"] and "A" in sheet_data:
         pool.extend(sheet_data["A"])
-    elif p in ["M8", "M9", "M10", "M11", "M12"] and "M_BACK" in sheet_data:
+
+    if p in ["M8", "M9", "M10", "M11", "M12"] and "M_BACK" in sheet_data:
         pool.extend(sheet_data["M_BACK"])
-    elif p in ["T1", "T2"] and "T" in sheet_data:
+
+    if p in ["T1", "T2"] and "T" in sheet_data:
         pool.extend(sheet_data["T"])
-    elif p in ["O1", "O3"] and "O" in sheet_data:
+
+    if p in ["O1", "O3"] and "O" in sheet_data:
         pool.extend(sheet_data["O"])
 
     return random.choice(pool) if pool else None
@@ -95,7 +118,6 @@ def get_global_data():
 
 
 shared_submissions = get_global_data()
-
 
 def sync_to_cloud():
     """非同步/背景儲存到 HF Dataset"""
@@ -143,10 +165,14 @@ with tab1:
                 if roast_msg:
                     st.info(f"👉 {cleaned_pos}：{roast_msg}")
 
+                # 搶頭香特殊吐槽（剛好是第一位）
+                if len(shared_submissions) == 1:
+                    st.warning("⚡ 很急喔，第一個報名。")
+                    
                 # 滿 10 人以上觸發大群體吐槽
                 if len(shared_submissions) >= 10:
                     st.warning(f"📢 目前已達 {len(shared_submissions)} 人報名！\n\n{random.choice(crowd_roasts)}")
-
+                
     st.subheader("🗂️ 目前所有填寫紀錄")
     if st.button("🔄 立即刷新填寫紀錄"):
         st.cache_resource.clear()
@@ -173,7 +199,6 @@ with tab2:
 
             winners = random.sample(shared_submissions, int(count))
 
-            st.balloons()
             st.success(random.choice(win_greetings))
             st.table(pd.DataFrame(winners))
 
