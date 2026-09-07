@@ -42,6 +42,7 @@ sheet_data = load_sheet_roasts()
 crowd_roasts = sheet_data.get("CROWD", [
     "🔥 你們也太多人報名了吧？到底誰留下來上班？",
     "👀 算一算都雙位數了... 單位唱空城計是吧？",
+    "⚠️ 到底還有誰還沒報名...？",
 ])
 suspense_texts = sheet_data.get("SUSPENSE", [
     "⏳ 正在計算功德值中...",
@@ -167,18 +168,18 @@ with tab1:
                 # === 稱號系統判定 ===
                 # 1. 前三名搶頭香固定稱號
                 if current_count == 0:
-                    badge = "[我真的不想上班]"
+                    badge = " 🫠[我真的不想上班]"
                 elif current_count == 1:
-                    badge = "[樓上的我也不想上班]"
+                    badge = " 🙄[樓上的我也不想上班]"
                 elif current_count == 2:
-                    badge = "[你們覺得我想嗎?]"
+                    badge = " 🤝[你們覺得我想嗎?]"
                 # 2. 第四名以後且在 28 分（含）後送出，發放隨機壓線稱號
                 elif now.minute >= 28:
                     rush_badges = [
-                        "[壓線仔]",
-                        "[我還有機會嗎?]",
-                        "[我快到了]",
-                        "[我有報名成功嗎?]",
+                        " ⏱️[壓線仔]",
+                        " ⏱️[我還有機會嗎?]",
+                        " ⏱️[我快到了]",
+                        " ⏱️[我有報名成功嗎?]",
                     ]
                     badge = random.choice(rush_badges)
                 else:
