@@ -150,25 +150,55 @@ with tab1:
 
         if submit_btn:
             cleaned_pos = pos_input.strip()
+            # 取出既有紀錄中去除稱號後的原始崗位，避免重複報名比對失效
+            existing_positions = [
+                d["崗位"].split()[0].upper() for d in shared_submissions
+            ]
+
             if not cleaned_pos:
                 st.warning("⚠️ 你搞個空白誰知道你是誰！")
-            elif cleaned_pos.upper() in [d["崗位"].upper() for d in shared_submissions]:
+            elif cleaned_pos.upper() in existing_positions:
                 st.error(f"🚫 {cleaned_pos} 不要重複報名，給我認真上班")
             else:
-                now_time = datetime.now(tz=tz_taiwan).strftime("%Y-%m-%d %H:%M:%S")
-                shared_submissions.append({"崗位": cleaned_pos, "時間": now_time})
-                sync_to_cloud()
-                st.success(f"✅ 已填寫：{cleaned_pos}（時間：{now_time}）")
+                now = datetime.now(tz=tz_taiwan)
+                now_time = now.strftime("%Y-%m-%d %H:%M:%S")
+                current_count = len(shared_submissions)
 
-                # 💬 觸發崗位專屬幹話
+                # === 稱號系統判定 ===
+                # 1. 前三名搶頭香固定稱號
+                if current_count == 0:
+                    badge = "[我真的不想上班]"
+                elif current_count == 1:
+                    badge = "[樓上的我也不想上班]"
+                elif current_count == 2:
+                    badge = "[你們覺得我想嗎?]"
+                # 2. 第四名以後且在 28 分（含）後送出，發放隨機壓線稱號
+                elif now.minute >= 28:
+                    rush_badges = [
+                        "[壓線仔]",
+                        "[我還有機會嗎?]",
+                        "[我快到了]",
+                        "[我有報名成功嗎?]",
+                    ]
+                    badge = random.choice(rush_badges)
+                else:
+                    badge = ""
+
+                saved_pos = f"{cleaned_pos} {badge}".strip()
+
+                shared_submissions.append({"崗位": saved_pos, "時間": now_time})
+                sync_to_cloud()
+                st.success(f"✅ 已填寫：{saved_pos}（時間：{now_time}）")
+
+                # 💬 崗位專屬幹話（用原始 cleaned_pos 比對）
                 roast_msg = get_position_roast(cleaned_pos)
                 if roast_msg:
                     st.info(f"👉 {cleaned_pos}：{roast_msg}")
 
-                # 搶頭香特殊吐槽（剛好是第一位）
-                if len(shared_submissions) == 1:
-                    st.warning("⚡ 很急喔，第一個報名。")
-                    
+                # 壓線加碼吐槽提示
+                if current_count >= 3 and now.minute >= 28:
+                    st.warning("🚨 28 分後才按送出？壓線大師就是你！")
+
                 # 滿 10 人以上觸發大群體吐槽
                 if len(shared_submissions) >= 10:
                     st.warning(f"📢 目前已達 {len(shared_submissions)} 人報名！\n\n{random.choice(crowd_roasts)}")
