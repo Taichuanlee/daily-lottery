@@ -17,138 +17,64 @@ REPO_ID = "Taichuanlee/daily-lottery-data"
 DATA_FILENAME = "data.json"
 api = HfApi()
 
-# === 幹話與語錄庫 ===
-crowd_roasts = [
+# Google Sheets CSV 匯出網址
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1W9ZTvzI71OkjDo2EUVZdHVBPvR2EIDaqalbe_XSW9SE/export?format=csv"
+
+
+# === 動態讀取 Google Sheet 語錄庫（快取 5 分鐘，避免頻繁請求） ===
+@st.cache_data(ttl=300)
+def load_sheet_roasts():
+    try:
+        df = pd.read_csv(SHEET_CSV_URL)
+        df.dropna(subset=["category", "text"], inplace=True)
+        df["category"] = df["category"].astype(str).str.strip().str.upper()
+        df["text"] = df["text"].astype(str).str.strip()
+        grouped = df.groupby("category")["text"].apply(list).to_dict()
+        return grouped
+    except Exception as e:
+        print(f"[WARN] 無法讀取 Google Sheet 語錄: {e}")
+        return {}
+
+
+sheet_data = load_sheet_roasts()
+
+# 取出各類別（若 Sheet 讀取失敗則有基礎備援文字）
+crowd_roasts = sheet_data.get("CROWD", [
     "🔥 你們也太多人報名了吧？到底誰留下來上班？",
     "👀 算一算都雙位數了... 單位唱空城計是吧？",
-    "🚨 還有人不想回家嗎？是不是沒假了？",
-    "🏃 搶成這樣，平常跑急救如果有這個速度就好了！",
-    "☕ 留下來的人功德無量，建議院長明天請全體喝大冰拿。",
-    "🙏 大家都想逃，這磁場已經壓不住了！",
-]
-
-suspense_texts = [
+])
+suspense_texts = sheet_data.get("SUSPENSE", [
     "⏳ 正在計算功德值中...",
     "⏳ 正在祈求EOC電話乖乖...",
-    "⏳ 病人不要來，我想回家...",
-    "⏳ 正在計算今天誰不適合上班的磁場最容易觸霉頭，優先放生...",
     "⏳ 系統黑箱作業中...",
-    "⏳ 我要爆炸了...",
-    "⏳ 別搞...",
-    "⏳ 一個都別想走...",
-    "⏳ 給我留下來上班...",
-    "⏳ 還有誰還沒被放過勒...",
-]
-
-win_greetings = [
+])
+win_greetings = sheet_data.get("WIN", [
     "🎉 恭喜脫離苦海！快走，趁 Leader 還沒反悔！",
-    "🎉 今日陽壽已扣除，成功兌換提早下班一張！",
-    "🎉 慢走不送！剩下的病人跟記錄我們會含淚替你守護的。",
     "🎉 跑快一點，千萬不要回頭看！記得上差勤請假！",
-    "🎉 恭喜祖上積德！今日幸運值已達顛峰，下班請小心不要踩到狗屎！",
-    "🎉 趁現在沒下雨，快跑！",
-]
-
-# ==========================================
-# 🎯 崗位專屬幹話資料庫（隨時可自由增刪）
-# ==========================================
-
-# 1. 共通幹話群組（同區同仁共用）
-COMMON_GROUPS = {
-    # 重症區 (C1 ~ C5)
-    "C": [
-        "重症需要你。",
-        "重症的別跑啊。",
-        "重症的夥伴在看你。",
-    ],
-    # 大暫區 (A1 ~ A8)
-    "A": [
-        "大暫就好好交班吧。",
-        "大暫的夥伴在瞪你。",
-        "你走了其他的大暫夥伴會很孤單。",
-        "大暫缺你不可。",
-    ],
-    # 後線 (M8 ~ M12)
-    "M_BACK": [
-        "都上後線就別走了吧...",
-    ],
-    # 門神/外傷區 (T1 ~ T2)
-    "T": [
-        "門神別走。",
-        "守門的，鎮住阿。",
-    ],
-    # 點班區 (O1, O3)
-    "O": [
-        "點完班再走吧...",
-        "來診的病人們等著你...",
-    ],
-}
-
-# 2. 個別崗位專屬句（有獨立梗的寫這裡，會自動跟共通句合併）
-INDIVIDUAL_POSITION_EGGS = {
-    # Leader
-    "L": [
-        "Leader 還想跑啊？",
-        "你走了誰卡你勒？",
-        "下個替死鬼是誰勒？",
-        "看一下你隔壁的，等下就是他上 Leader 了。",
-    ],
-    # 內科單獨崗位
-    "M1": [
-        "M1 也想走阿？哪個衰鬼會頂你勒？",
-        "M1 今天很空ㄟ，確定要走嗎？",
-        "M1 很滿喔，希望你可以抽中。",
-    ],
-    "M2": [
-        "你走了 M23 很孤單ㄟ。",
-    ],
-    "M4": [
-        "U 區感覺很多隔離ㄟ，快跑。",
-        "U 區老人等著你 ><",
-        "你沒抽中的話，今天就要一個人待在裡面了。",
-    ],
-    "M11": [
-        "你們今天人力很奢侈喔...",
-    ],
-    "M12": [
-        "你們今天人力很奢侈喔...",
-    ],
-    # 重症個別特別句
-    "C1": [
-        "重一就留下來好好交班，好嗎？",
-    ],
-    "C2": [
-        "重二請好好外送。",
-    ],
-    # 兒科/特殊區
-    "P": [
-        "小人國，笑你。",
-    ],
-}
+])
 
 
 def get_position_roast(pos: str) -> str:
-    """自動判定崗位並隨機抽取一句幹話"""
+    """自動判定崗位並從 Sheet 隨機抽取一句幹話"""
     p = pos.upper().strip()
     pool = []
 
-    # 1. 抓取個別專屬句
-    if p in INDIVIDUAL_POSITION_EGGS:
-        pool.extend(INDIVIDUAL_POSITION_EGGS[p])
+    # 1. 抓取個別專屬句 (例如 L, M1, C1 等)
+    if p in sheet_data:
+        pool.extend(sheet_data[p])
 
     # 2. 抓取所屬群組共通句
-    if p in ["C1", "C2", "C3", "C4", "C5"]:
-        pool.extend(COMMON_GROUPS["C"])
-    elif p in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]:
-        pool.extend(COMMON_GROUPS["A"])
-    elif p in ["M8", "M9", "M10", "M11", "M12"]:
-        pool.extend(COMMON_GROUPS["M_BACK"])
-    elif p in ["T1", "T2", "T"]:
-        pool.extend(COMMON_GROUPS["T"])
-    elif p in ["O1", "O3"]:
-        pool.extend(COMMON_GROUPS["O"])
+    if p in ["C1", "C2", "C3", "C4", "C5"] and "C" in sheet_data:
+        pool.extend(sheet_data["C"])
+    elif p in [f"A{i}" for i in range(1, 9)] and "A" in sheet_data:
+        pool.extend(sheet_data["A"])
+    elif p in ["M8", "M9", "M10", "M11", "M12"] and "M_BACK" in sheet_data:
+        pool.extend(sheet_data["M_BACK"])
+    elif p in ["T1", "T2"] and "T" in sheet_data:
+        pool.extend(sheet_data["T"])
+    elif p in ["O1", "O3"] and "O" in sheet_data:
+        pool.extend(sheet_data["O"])
 
-    # 3. 如果有符合的句子，隨機挑一句回傳；沒有就回傳 None
     return random.choice(pool) if pool else None
 
 
@@ -172,7 +98,7 @@ shared_submissions = get_global_data()
 
 
 def sync_to_cloud():
-    """背景儲存到 HF Dataset"""
+    """非同步/背景儲存到 HF Dataset"""
     try:
         with open(DATA_FILENAME, "w", encoding="utf-8") as f:
             json.dump(shared_submissions, f, ensure_ascii=False, indent=2)
@@ -224,6 +150,7 @@ with tab1:
     st.subheader("🗂️ 目前所有填寫紀錄")
     if st.button("🔄 立即刷新填寫紀錄"):
         st.cache_resource.clear()
+        st.cache_data.clear()  # 同步刷新 Google Sheet 快取
         st.rerun()
 
     if shared_submissions:
@@ -246,6 +173,7 @@ with tab2:
 
             winners = random.sample(shared_submissions, int(count))
 
+            st.balloons()
             st.success(random.choice(win_greetings))
             st.table(pd.DataFrame(winners))
 
