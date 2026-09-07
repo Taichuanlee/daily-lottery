@@ -230,8 +230,9 @@ with tab3:
                 st.session_state["del_success_msg"] = f"✅ 已成功刪除：{deleted['崗位']}｜{deleted['時間']}"
                 st.rerun()
 
-# --- Tab 4: 資料 Reset ---
+# --- Tab 4: 資料 Reset 與後台管理 ---
 with tab4:
+    # 顯示清空成功的提示
     if "reset_success_msg" in st.session_state:
         st.success(st.session_state["reset_success_msg"])
         del st.session_state["reset_success_msg"]
@@ -239,12 +240,22 @@ with tab4:
     if "confirm_reset" not in st.session_state:
         st.session_state["confirm_reset"] = False
 
-    reset_pwd = st.text_input(
-        "輸入管理密碼以清空資料", type="password", key="reset_pwd"
+    admin_pwd = st.text_input(
+        "輸入管理密碼以執行操作", type="password", key="admin_pwd"
     )
 
+    # 隱藏暗號判定：輸入 117493 召喚 Google Sheet
+    if admin_pwd == "117493":
+        st.info("🔓 管理者通道已解鎖！")
+        st.link_button(
+            "📊 點此開啟 Google Sheet 編輯語錄庫",
+            "https://docs.google.com/spreadsheets/d/1W9ZTvzI71OkjDo2EUVZdHVBPvR2EIDaqalbe_XSW9SE/edit?usp=sharing",
+            use_container_width=True
+        )
+
+    # 一般重設按鈕（密碼為 52388）
     if st.button("🧹 清空所有資料", type="secondary"):
-        if reset_pwd != DRAW_PASSWORD:
+        if admin_pwd != DRAW_PASSWORD:
             st.error("❌ 密碼錯了，你是誰？不要搞。")
             st.session_state["confirm_reset"] = False
         elif len(shared_submissions) == 0:
@@ -253,6 +264,7 @@ with tab4:
         else:
             st.session_state["confirm_reset"] = True
 
+    # 兩階段防呆確認
     if st.session_state["confirm_reset"]:
         st.warning("⚠️ **警告：此操作將抹除所有同仁填寫的紀錄，無法復原！**")
         col1, col2 = st.columns([2, 1])
