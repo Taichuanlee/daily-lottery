@@ -9,7 +9,7 @@ import streamlit as st
 
 st.set_page_config(page_title="我.要.放.假！", page_icon="🎯")
 tz_taiwan = timezone(timedelta(hours=8))
-DRAW_PASSWORD = "52388"
+DRAW_PASSWORD = st.secrets["DRAW_PASSWORD"]
 
 # 相容 Streamlit Secrets 與系統環境變數
 HF_TOKEN = st.secrets.get("HF_TOKEN", os.getenv("HF_TOKEN"))
