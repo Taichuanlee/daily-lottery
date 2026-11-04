@@ -36,7 +36,7 @@ def load_sheet_roasts():
         return {}
 
 
-sheet_data = load_sheet_roasts()
+sheet_data = {}
 
 # 取出各類別（若 Sheet 讀取失敗則有基礎備援文字）
 crowd_roasts = sheet_data.get("CROWD", [
