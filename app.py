@@ -226,7 +226,7 @@ with tab2:
         else:
             random_suspense = random.choice(suspense_texts)
             with st.spinner(random_suspense):
-                time.sleep(2)
+                time.sleep(1)
 
             winners = random.sample(shared_submissions, int(count))
 
