@@ -13,7 +13,7 @@ DRAW_PASSWORD = os.getenv("DRAW_PASSWORD") or st.secrets["DRAW_PASSWORD"]
 
 
 # 相容 Streamlit Secrets 與系統環境變數
-HF_TOKEN = st.secrets.get("HF_TOKEN", os.getenv("HF_TOKEN"))
+HF_TOKEN = os.getenv("HF_TOKEN") or st.secrets.get("HF_TOKEN")
 REPO_ID = "Taichuanlee/daily-lottery-data"
 DATA_FILENAME = "data.json"
 api = HfApi()
